@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
  
-REPORTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'reports')
+REPORTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'outputs')
  
 COLORS = ['#2563EB','#16A34A','#7C3AED','#EA580C',
           '#0891B2','#DC2626','#D97706','#059669','#BE185D','#1D4ED8']
@@ -51,7 +51,7 @@ year_range = f"{int(data['yearly']['year'].min())}–{int(data['yearly']['year']
     if not data["yearly"].empty else "N/A"
  
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Patents (in reports)", f"{int(total_patents):,}")
+col1.metric("Total Patents (in outputs)", f"{int(total_patents):,}")
 col2.metric("Top Inventors Tracked",      f"{total_inventors}")
 col3.metric("Top Companies Tracked",      f"{total_companies}")
 col4.metric("Year Range",                 year_range)
@@ -126,7 +126,7 @@ with tab1:
         df_show["patents"] = df_show["patents"].apply(lambda x: f"{int(x):,}")
         st.dataframe(df_show, use_container_width=True, hide_index=True)
     else:
-        st.warning("yearly_trends.csv not found in reports/. Run report.py first.")
+        st.warning("yearly_trends.csv not found in outputs/. Run report.py first and ensure files are in outputs/ folder.")
  
     # Patent types
     if not data["types"].empty:
@@ -184,7 +184,7 @@ with tab2:
         st.pyplot(fig2)
         plt.close()
     else:
-        st.warning("top_inventors.csv not found in reports/. Run report.py first.")
+        st.warning("top_inventors.csv not found in outputs/. Run report.py first and ensure files are in outputs/ folder.")
  
  
 # ══════════════════════════════════════════════════════════
@@ -229,7 +229,7 @@ with tab3:
         st.pyplot(fig2)
         plt.close()
     else:
-        st.warning("top_companies.csv not found in reports/. Run report.py first.")
+        st.warning("top_companies.csv not found in outputs/. Run report.py first and ensure files are in outputs/ folder.")
  
  
 # ══════════════════════════════════════════════════════════
