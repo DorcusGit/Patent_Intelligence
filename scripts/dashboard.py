@@ -1,338 +1,253 @@
-# ============================================================
-# dashboard.py  —  Streamlit Dashboard
-# Run with: streamlit run scripts/dashboard.py
-# ============================================================
-
 import os
-import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import streamlit as st
-
+ 
 # ── Page config ───────────────────────────────────────────
 st.set_page_config(
     page_title="Global Patent Intelligence",
     page_icon="🔬",
     layout="wide"
 )
-
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'patents.db')
-
+ 
+REPORTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'reports')
+ 
 COLORS = ['#2563EB','#16A34A','#7C3AED','#EA580C',
           '#0891B2','#DC2626','#D97706','#059669','#BE185D','#1D4ED8']
-
-
-# ── DB helper ─────────────────────────────────────────────
+ 
+ 
+# ── Load CSVs ─────────────────────────────────────────────
 @st.cache_data
-def run_query(sql):
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query(sql, conn)
-    conn.close()
-    return df
-
-
+def load_data():
+    def read(filename):
+        path = os.path.join(REPORTS_DIR, filename)
+        if os.path.exists(path):
+            return pd.read_csv(path)
+        return pd.DataFrame()
+ 
+    return {
+        "inventors":  read("top_inventors.csv"),
+        "companies":  read("top_companies.csv"),
+        "yearly":     read("yearly_trends.csv"),
+        "types":      read("patent_types.csv"),
+    }
+ 
+data = load_data()
+ 
+ 
 # ── Header ────────────────────────────────────────────────
 st.title("🔬 Global Patent Intelligence Dashboard")
 st.markdown("**Data Source:** USPTO PatentsView — Granted Patents 2006–2025")
 st.divider()
-
-
+ 
+ 
 # ── KPI Row ───────────────────────────────────────────────
-total_patents   = run_query("SELECT COUNT(*) AS n FROM patents").iloc[0]['n']
-total_inventors = run_query("SELECT COUNT(*) AS n FROM inventors").iloc[0]['n']
-total_companies = run_query("SELECT COUNT(*) AS n FROM companies").iloc[0]['n']
-total_relations = run_query("SELECT COUNT(*) AS n FROM patent_inventor").iloc[0]['n']
-
+yearly = data["inventors"]
+total_patents = data["yearly"]["patents"].sum() if not data["yearly"].empty else 0
+total_inventors = len(data["inventors"]) if not data["inventors"].empty else 0
+total_companies = len(data["companies"]) if not data["companies"].empty else 0
+year_range = f"{int(data['yearly']['year'].min())}–{int(data['yearly']['year'].max())}" \
+    if not data["yearly"].empty else "N/A"
+ 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Patents",    f"{int(total_patents):,}")
-col2.metric("Total Inventors",  f"{int(total_inventors):,}")
-col3.metric("Total Companies",  f"{int(total_companies):,}")
-col4.metric("Patent-Inventor Links", f"{int(total_relations):,}")
-
+col1.metric("Total Patents (in reports)", f"{int(total_patents):,}")
+col2.metric("Top Inventors Tracked",      f"{total_inventors}")
+col3.metric("Top Companies Tracked",      f"{total_companies}")
+col4.metric("Year Range",                 year_range)
+ 
 st.divider()
-
-
-# ── Sidebar filters ───────────────────────────────────────
+ 
+ 
+# ── Sidebar ───────────────────────────────────────────────
 st.sidebar.title("🔧 Filters")
-year_data = run_query("SELECT DISTINCT CAST(year AS INTEGER) AS year FROM patents WHERE year IS NOT NULL ORDER BY year")
-years = sorted(year_data['year'].dropna().astype(int).tolist())
-
-if years:
+top_n = st.sidebar.slider("Top N results", min_value=5, max_value=20, value=10)
+ 
+if not data["yearly"].empty:
+    years = sorted(data["yearly"]["year"].dropna().astype(int).tolist())
     year_min, year_max = st.sidebar.slider(
         "Year Range", min_value=min(years), max_value=max(years),
         value=(min(years), max(years))
     )
 else:
     year_min, year_max = 2006, 2025
-
-top_n = st.sidebar.slider("Top N results", min_value=5, max_value=20, value=10)
-
+ 
 st.sidebar.divider()
 st.sidebar.markdown("**About**")
 st.sidebar.markdown("Built with Python, SQLite, pandas, and Streamlit.")
-
-
-# ── Tab layout ────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 Trends", "👤 Inventors", "🏢 Companies", "🔗 SQL Queries", "📋 Data Table"
+st.sidebar.markdown("Data from USPTO PatentsView.")
+ 
+ 
+# ── Tabs ──────────────────────────────────────────────────
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📈 Trends", "👤 Inventors", "🏢 Companies", "📋 Raw Data"
 ])
-
-
+ 
+ 
 # ══════════════════════════════════════════════════════════
 # TAB 1 — TRENDS
 # ══════════════════════════════════════════════════════════
 with tab1:
-    st.subheader("Patents Granted Per Year")
-
-    yearly = run_query(f"""
-        SELECT CAST(year AS INTEGER) AS year, COUNT(*) AS patents
-        FROM patents
-        WHERE year IS NOT NULL
-          AND CAST(year AS INTEGER) BETWEEN {year_min} AND {year_max}
-        GROUP BY year ORDER BY year
-    """)
-
-    if not yearly.empty:
+    st.subheader("Patents Granted Per Year (2006–2025)")
+ 
+    if not data["yearly"].empty:
+        df = data["yearly"].copy()
+        df["year"] = df["year"].astype(int)
+        df = df[(df["year"] >= year_min) & (df["year"] <= year_max)]
+ 
         fig, ax = plt.subplots(figsize=(12, 4))
-        ax.fill_between(yearly['year'], yearly['patents'], alpha=0.15, color='#2563EB')
-        ax.plot(yearly['year'], yearly['patents'], color='#2563EB', linewidth=2.5,
-                marker='o', markersize=5)
+        ax.fill_between(df["year"], df["patents"], alpha=0.15, color="#2563EB")
+        ax.plot(df["year"], df["patents"], color="#2563EB",
+                linewidth=2.5, marker="o", markersize=5)
         ax.set_xlabel("Year")
-        ax.set_ylabel("Patents")
-        ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x:,.0f}'))
-        ax.spines[['top','right']].set_visible(False)
-        ax.grid(axis='y', linestyle='--', alpha=0.3)
+        ax.set_ylabel("Patents Granted")
+        ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+        ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+        ax.spines[["top","right"]].set_visible(False)
+        ax.grid(axis="y", linestyle="--", alpha=0.3)
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
-
-        st.markdown("#### Year-by-Year Breakdown")
-        yearly['year'] = yearly['year'].astype(int)
-        yearly['patents'] = yearly['patents'].apply(lambda x: f"{x:,}")
-        st.dataframe(yearly, use_container_width=True, hide_index=True)
+ 
+        # Stats row
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Peak Year",
+                  str(int(df.loc[df["patents"].idxmax(), "year"])),
+                  f"{int(df['patents'].max()):,} patents")
+        c2.metric("Lowest Year",
+                  str(int(df.loc[df["patents"].idxmin(), "year"])),
+                  f"{int(df['patents'].min()):,} patents")
+        growth = int(df.iloc[-1]["patents"]) - int(df.iloc[0]["patents"])
+        c3.metric("Growth (first vs last year)", f"{growth:+,} patents")
+ 
+        st.divider()
+        st.subheader("Year-by-Year Breakdown")
+        df_show = df.copy()
+        df_show["patents"] = df_show["patents"].apply(lambda x: f"{int(x):,}")
+        st.dataframe(df_show, use_container_width=True, hide_index=True)
     else:
-        st.warning("No data for selected year range.")
-
-    st.divider()
-    st.subheader("Patent Types")
-    types = run_query(f"""
-        SELECT patent_type, COUNT(*) AS patents
-        FROM patents
-        WHERE CAST(year AS INTEGER) BETWEEN {year_min} AND {year_max}
-          AND patent_type IS NOT NULL
-        GROUP BY patent_type ORDER BY patents DESC
-    """)
-    if not types.empty:
-        fig2, ax2 = plt.subplots(figsize=(6, 3))
-        ax2.barh(types['patent_type'], types['patents'], color=COLORS[:len(types)])
-        ax2.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x:,.0f}'))
-        ax2.spines[['top','right']].set_visible(False)
+        st.warning("yearly_trends.csv not found in reports/. Run report.py first.")
+ 
+    # Patent types
+    if not data["types"].empty:
+        st.divider()
+        st.subheader("Patents by Type")
+        fig2, ax2 = plt.subplots(figsize=(7, 3))
+        df_t = data["types"]
+        ax2.barh(df_t["patent_type"], df_t["patents"], color=COLORS[:len(df_t)])
+        ax2.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+        ax2.spines[["top","right"]].set_visible(False)
+        ax2.set_xlabel("Patents")
         plt.tight_layout()
         st.pyplot(fig2)
         plt.close()
-
-
+ 
+ 
 # ══════════════════════════════════════════════════════════
 # TAB 2 — INVENTORS
 # ══════════════════════════════════════════════════════════
 with tab2:
     st.subheader(f"Top {top_n} Inventors by Patent Count")
-
-    inventors = run_query(f"""
-        SELECT i.name, COUNT(DISTINCT pi.patent_id) AS patents
-        FROM inventors i
-        JOIN patent_inventor pi ON i.inventor_id = pi.inventor_id
-        JOIN patents p ON pi.patent_id = p.patent_id
-        WHERE CAST(p.year AS INTEGER) BETWEEN {year_min} AND {year_max}
-        GROUP BY i.inventor_id
-        ORDER BY patents DESC
-        LIMIT {top_n}
-    """)
-
-    if not inventors.empty:
+ 
+    if not data["inventors"].empty:
+        df = data["inventors"].head(top_n).copy()
+ 
         col_a, col_b = st.columns([3, 2])
         with col_a:
+            df_plot = df.sort_values("patents")
             fig, ax = plt.subplots(figsize=(8, 5))
-            df_plot = inventors.sort_values('patents')
-            bars = ax.barh(df_plot['name'], df_plot['patents'], color='#2563EB')
-            ax.bar_label(bars, fmt='%,.0f', padding=3, fontsize=8)
+            bars = ax.barh(df_plot["name"], df_plot["patents"], color="#2563EB")
+            ax.bar_label(bars, fmt="%,.0f", padding=3, fontsize=8)
             ax.set_xlabel("Patents")
-            ax.spines[['top','right']].set_visible(False)
+            ax.spines[["top","right"]].set_visible(False)
             plt.tight_layout()
             st.pyplot(fig)
             plt.close()
-
+ 
         with col_b:
             st.markdown("#### Rankings")
-            inventors.index = range(1, len(inventors) + 1)
-            inventors.index.name = "Rank"
-            inventors['patents'] = inventors['patents'].apply(lambda x: f"{x:,}")
-            st.dataframe(inventors, use_container_width=True)
-
-
+            df_show = df[["name","patents"]].copy()
+            df_show.index = range(1, len(df_show) + 1)
+            df_show.index.name = "Rank"
+            df_show["patents"] = df_show["patents"].apply(lambda x: f"{int(x):,}")
+            st.dataframe(df_show, use_container_width=True)
+ 
+        st.divider()
+        st.subheader("Inventor Share — Pie Chart")
+        fig2, ax2 = plt.subplots(figsize=(7, 5))
+        df["short"] = df["name"].str.split().str[-1]  # last name only for pie
+        ax2.pie(df["patents"], labels=df["short"], autopct="%1.1f%%",
+                colors=COLORS[:len(df)], startangle=140,
+                textprops={"fontsize": 8})
+        ax2.set_title(f"Top {top_n} Inventors — Patent Share")
+        plt.tight_layout()
+        st.pyplot(fig2)
+        plt.close()
+    else:
+        st.warning("top_inventors.csv not found in reports/. Run report.py first.")
+ 
+ 
 # ══════════════════════════════════════════════════════════
 # TAB 3 — COMPANIES
 # ══════════════════════════════════════════════════════════
 with tab3:
     st.subheader(f"Top {top_n} Companies by Patent Count")
-
-    companies = run_query(f"""
-        SELECT c.name, c.assignee_type, COUNT(DISTINCT pa.patent_id) AS patents
-        FROM companies c
-        JOIN patent_assignee pa ON c.company_id = pa.company_id
-        JOIN patents p ON pa.patent_id = p.patent_id
-        WHERE CAST(p.year AS INTEGER) BETWEEN {year_min} AND {year_max}
-        GROUP BY c.company_id
-        ORDER BY patents DESC
-        LIMIT {top_n}
-    """)
-
-    if not companies.empty:
+ 
+    if not data["companies"].empty:
+        df = data["companies"].head(top_n).copy()
+ 
         col_a, col_b = st.columns([3, 2])
         with col_a:
+            df_plot = df.sort_values("patents")
+            df_plot["short_name"] = df_plot["name"].str.slice(0, 30)
             fig, ax = plt.subplots(figsize=(8, 5))
-            df_plot = companies.sort_values('patents')
-            df_plot['short_name'] = df_plot['name'].str.slice(0, 30)
-            bars = ax.barh(df_plot['short_name'], df_plot['patents'], color='#16A34A')
-            ax.bar_label(bars, fmt='%,.0f', padding=3, fontsize=8)
+            bars = ax.barh(df_plot["short_name"], df_plot["patents"], color="#16A34A")
+            ax.bar_label(bars, fmt="%,.0f", padding=3, fontsize=8)
             ax.set_xlabel("Patents")
-            ax.spines[['top','right']].set_visible(False)
+            ax.spines[["top","right"]].set_visible(False)
             plt.tight_layout()
             st.pyplot(fig)
             plt.close()
-
+ 
         with col_b:
             st.markdown("#### Rankings")
-            companies.index = range(1, len(companies) + 1)
-            companies.index.name = "Rank"
-            companies['patents'] = companies['patents'].apply(lambda x: f"{x:,}")
-            st.dataframe(companies[['name','patents']], use_container_width=True)
-
+            df_show = df[["name","patents"]].copy()
+            df_show.index = range(1, len(df_show) + 1)
+            df_show.index.name = "Rank"
+            df_show["patents"] = df_show["patents"].apply(lambda x: f"{int(x):,}")
+            st.dataframe(df_show, use_container_width=True)
+ 
         st.divider()
         st.subheader("Company Share — Pie Chart")
         fig2, ax2 = plt.subplots(figsize=(7, 5))
-        companies_raw = run_query(f"""
-            SELECT c.name, COUNT(DISTINCT pa.patent_id) AS patents
-            FROM companies c
-            JOIN patent_assignee pa ON c.company_id = pa.company_id
-            JOIN patents p ON pa.patent_id = p.patent_id
-            WHERE CAST(p.year AS INTEGER) BETWEEN {year_min} AND {year_max}
-            GROUP BY c.company_id ORDER BY patents DESC LIMIT {top_n}
-        """)
-        companies_raw['short'] = companies_raw['name'].str.slice(0, 20)
-        ax2.pie(companies_raw['patents'], labels=companies_raw['short'],
-                autopct='%1.1f%%', colors=COLORS[:len(companies_raw)],
-                startangle=140, textprops={'fontsize': 8})
+        df["short"] = df["name"].str.slice(0, 20)
+        ax2.pie(df["patents"], labels=df["short"], autopct="%1.1f%%",
+                colors=COLORS[:len(df)], startangle=140,
+                textprops={"fontsize": 8})
+        ax2.set_title(f"Top {top_n} Companies — Patent Share")
         plt.tight_layout()
         st.pyplot(fig2)
         plt.close()
-
-
+    else:
+        st.warning("top_companies.csv not found in reports/. Run report.py first.")
+ 
+ 
 # ══════════════════════════════════════════════════════════
-# TAB 4 — SQL QUERIES
+# TAB 4 — RAW DATA
 # ══════════════════════════════════════════════════════════
 with tab4:
-    st.subheader("All 7 SQL Queries with Live Results")
-
-    queries = {
-        "Q1: Top Inventors": f"""
-            SELECT i.name, COUNT(DISTINCT pi.patent_id) AS patent_count
-            FROM inventors i
-            JOIN patent_inventor pi ON i.inventor_id = pi.inventor_id
-            GROUP BY i.inventor_id ORDER BY patent_count DESC LIMIT 10
-        """,
-        "Q2: Top Companies": f"""
-            SELECT c.name, COUNT(DISTINCT pa.patent_id) AS patent_count
-            FROM companies c
-            JOIN patent_assignee pa ON c.company_id = pa.company_id
-            GROUP BY c.company_id ORDER BY patent_count DESC LIMIT 10
-        """,
-        "Q3: Patent Types": """
-            SELECT patent_type, COUNT(*) AS patent_count,
-            ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM patents), 2) AS share_pct
-            FROM patents WHERE patent_type IS NOT NULL
-            GROUP BY patent_type ORDER BY patent_count DESC
-        """,
-        "Q4: Trends Over Time": """
-            SELECT year, COUNT(*) AS patent_count
-            FROM patents WHERE year IS NOT NULL
-            GROUP BY year ORDER BY year
-        """,
-        "Q5: JOIN — Patents + Inventors + Companies": """
-            SELECT p.patent_id, p.title, p.year, i.name AS inventor,
-                   c.name AS company
-            FROM patents p
-            JOIN patent_inventor pi ON p.patent_id = pi.patent_id
-            JOIN inventors i ON pi.inventor_id = i.inventor_id
-            LEFT JOIN patent_assignee pa ON p.patent_id = pa.patent_id
-            LEFT JOIN companies c ON pa.company_id = c.company_id
-            LIMIT 20
-        """,
-        "Q6: CTE — Top Inventors per Patent Type": """
-            WITH inventor_counts AS (
-                SELECT i.inventor_id, i.name, p.patent_type,
-                       COUNT(DISTINCT pi.patent_id) AS patent_count
-                FROM inventors i
-                JOIN patent_inventor pi ON i.inventor_id = pi.inventor_id
-                JOIN patents p ON pi.patent_id = p.patent_id
-                GROUP BY i.inventor_id, p.patent_type
-            ),
-            type_totals AS (
-                SELECT patent_type, SUM(patent_count) AS type_total
-                FROM inventor_counts GROUP BY patent_type
-            )
-            SELECT ic.patent_type, ic.name, ic.patent_count,
-                   ROUND(100.0 * ic.patent_count / tt.type_total, 3) AS pct_of_type
-            FROM inventor_counts ic
-            JOIN type_totals tt ON ic.patent_type = tt.patent_type
-            ORDER BY ic.patent_count DESC LIMIT 20
-        """,
-        "Q7: Ranking — Window Functions": """
-            SELECT name, patent_type, patent_count,
-                   RANK() OVER (ORDER BY patent_count DESC) AS global_rank,
-                   RANK() OVER (PARTITION BY patent_type ORDER BY patent_count DESC) AS rank_in_type,
-                   ROUND(100.0 * patent_count / SUM(patent_count) OVER (), 4) AS global_share_pct
-            FROM (
-                SELECT i.inventor_id, i.name, p.patent_type,
-                       COUNT(DISTINCT pi.patent_id) AS patent_count
-                FROM inventors i
-                JOIN patent_inventor pi ON i.inventor_id = pi.inventor_id
-                JOIN patents p ON pi.patent_id = p.patent_id
-                GROUP BY i.inventor_id, p.patent_type
-            ) sub
-            ORDER BY global_rank LIMIT 20
-        """,
+    st.subheader("Raw Report Data")
+ 
+    sections = {
+        "Top Inventors":    data["inventors"],
+        "Top Companies":    data["companies"],
+        "Yearly Trends":    data["yearly"],
+        "Patent Types":     data["types"],
     }
-
-    for title, sql in queries.items():
-        with st.expander(f"**{title}**", expanded=False):
-            st.code(sql.strip(), language='sql')
-            try:
-                result = run_query(sql)
-                st.dataframe(result, use_container_width=True, hide_index=True)
-            except Exception as e:
-                st.error(f"Query error: {e}")
-
-
-# ══════════════════════════════════════════════════════════
-# TAB 5 — DATA TABLE
-# ══════════════════════════════════════════════════════════
-with tab5:
-    st.subheader("Browse Patent Records")
-
-    search = st.text_input("Search by patent title (optional):")
-
-    where = f"WHERE CAST(year AS INTEGER) BETWEEN {year_min} AND {year_max}"
-    if search:
-        where += f" AND LOWER(title) LIKE LOWER('%{search}%')"
-
-    sample = run_query(f"""
-        SELECT patent_id, patent_type, title, filing_date, year
-        FROM patents {where}
-        ORDER BY year DESC
-        LIMIT 500
-    """)
-
-    st.markdown(f"Showing **{len(sample):,}** records (max 500)")
-    st.dataframe(sample, use_container_width=True, hide_index=True)
+ 
+    for title, df in sections.items():
+        if not df.empty:
+            with st.expander(f"**{title}** ({len(df)} rows)"):
+                st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.warning(f"{title} — no data found.")
