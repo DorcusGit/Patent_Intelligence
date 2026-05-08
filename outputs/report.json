@@ -1,0 +1,225 @@
+{
+  "summary": {
+    "total_patents": 6122892,
+    "total_inventors": 4294034,
+    "total_companies": 572495
+  },
+  "top_inventors": [
+    {
+      "rank": 1,
+      "name": "Shunpei Yamazaki",
+      "patents": 5348
+    },
+    {
+      "rank": 2,
+      "name": "Tao Luo",
+      "patents": 4488
+    },
+    {
+      "rank": 3,
+      "name": "Kia Silverbrook",
+      "patents": 3957
+    },
+    {
+      "rank": 4,
+      "name": "Jonathan P. Ive",
+      "patents": 2873
+    },
+    {
+      "rank": 5,
+      "name": "Junyi Li",
+      "patents": 2861
+    },
+    {
+      "rank": 6,
+      "name": "Kangguo Cheng",
+      "patents": 2828
+    },
+    {
+      "rank": 7,
+      "name": "Frederick E. Shelton, IV",
+      "patents": 2720
+    },
+    {
+      "rank": 8,
+      "name": "Peter Gaal",
+      "patents": 2540
+    },
+    {
+      "rank": 9,
+      "name": "Duncan Robert Kerr",
+      "patents": 2494
+    },
+    {
+      "rank": 10,
+      "name": "Bartley K. Andre",
+      "patents": 2412
+    }
+  ],
+  "top_companies": [
+    {
+      "rank": 1,
+      "name": "SAMSUNG DISPLAY CO., LTD.",
+      "type": "3",
+      "patents": 159014
+    },
+    {
+      "rank": 2,
+      "name": "International Business Machines Corporation",
+      "type": "2",
+      "patents": 122292
+    },
+    {
+      "rank": 3,
+      "name": "CANON KABUSHIKI KAISHA",
+      "type": "3",
+      "patents": 60370
+    },
+    {
+      "rank": 4,
+      "name": "LG ELECTRONICS INC.",
+      "type": "3",
+      "patents": 46944
+    },
+    {
+      "rank": 5,
+      "name": "SONY GROUP CORPORATION",
+      "type": "3",
+      "patents": 42472
+    },
+    {
+      "rank": 6,
+      "name": "Intel Corporation",
+      "type": "2",
+      "patents": 42389
+    },
+    {
+      "rank": 7,
+      "name": "QUALCOMM Incorporated",
+      "type": "2",
+      "patents": 40212
+    },
+    {
+      "rank": 8,
+      "name": "Apple Inc.",
+      "type": "2",
+      "patents": 39059
+    },
+    {
+      "rank": 9,
+      "name": "Taiwan Semiconductor Manufacturing Company, Ltd.",
+      "type": "3",
+      "patents": 37417
+    },
+    {
+      "rank": 10,
+      "name": "Kabushiki Kaisha Toshiba",
+      "type": "3",
+      "patents": 32376
+    }
+  ],
+  "patent_types": [
+    {
+      "type": "utility",
+      "patents": 5495831
+    },
+    {
+      "type": "design",
+      "patents": 594176
+    },
+    {
+      "type": "plant",
+      "patents": 21000
+    },
+    {
+      "type": "reissue",
+      "patents": 11737
+    },
+    {
+      "type": "statutory invention registration",
+      "patents": 148
+    }
+  ],
+  "yearly_trends": [
+    {
+      "year": 2006,
+      "patents": 196489
+    },
+    {
+      "year": 2007,
+      "patents": 182978
+    },
+    {
+      "year": 2008,
+      "patents": 185260
+    },
+    {
+      "year": 2009,
+      "patents": 192052
+    },
+    {
+      "year": 2010,
+      "patents": 244599
+    },
+    {
+      "year": 2011,
+      "patents": 248101
+    },
+    {
+      "year": 2012,
+      "patents": 277285
+    },
+    {
+      "year": 2013,
+      "patents": 303658
+    },
+    {
+      "year": 2014,
+      "patents": 327014
+    },
+    {
+      "year": 2015,
+      "patents": 326969
+    },
+    {
+      "year": 2016,
+      "patents": 334674
+    },
+    {
+      "year": 2017,
+      "patents": 352587
+    },
+    {
+      "year": 2018,
+      "patents": 341104
+    },
+    {
+      "year": 2019,
+      "patents": 392618
+    },
+    {
+      "year": 2020,
+      "patents": 390572
+    },
+    {
+      "year": 2021,
+      "patents": 363829
+    },
+    {
+      "year": 2022,
+      "patents": 360417
+    },
+    {
+      "year": 2023,
+      "patents": 350093
+    },
+    {
+      "year": 2024,
+      "patents": 373852
+    },
+    {
+      "year": 2025,
+      "patents": 378741
+    }
+  ]
+}
